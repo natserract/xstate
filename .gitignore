@@ -24,3 +24,5 @@ exstate-*.tar
 
 # Temporary files, for example, from tests.
 /tmp/
+
+Notes.md
