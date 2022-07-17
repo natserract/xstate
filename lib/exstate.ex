@@ -80,13 +80,12 @@ defmodule Exstate do
   #   StateMachine.modifiable(init_machine, :created),
   #   structs: true
   # )
-  # IO.inspect(
-  #   StateMachine.transition(init_machine, "created.confirmed_by_customer"),
-  #   structs: true
-  # )
+  # IO.inspect(StateMachine.get_states(init_machine))
 
-  # IO.inspect(:sys.get_state(init_machine.pid))
-  IO.inspect(StateMachine.get_states(init_machine))
-  IO.inspect(StateMachine.set_states(init_machine, "nil"), structs: true)
-  IO.inspect(StateMachine.get_states(init_machine))
+  IO.inspect(
+    StateMachine.transition(init_machine, "customer_confirmed.cancel"),
+    structs: true
+  )
+
+  # IO.inspect(StateMachine.get_states(init_machine))
 end

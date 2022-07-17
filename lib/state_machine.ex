@@ -135,12 +135,32 @@ defmodule Exstate.StateMachine do
               |> Enum.filter(fn v -> not is_nil(v) end)
             end
 
+          # TODO: before action
+          # has_before =
+          #   transition_entry
+          #   |> get_in([
+          #     Access.all(),
+          #     Access.key!(:before)
+          #   ])
+          #   |> Enum.map(fn f ->
+          #     if not is_nil(f) do
+          #       task = Task.async(f)
+          #       Task.await(task)
+          #     else
+          #       nil
+          #     end
+          #   end)
+
           # Get target field, this's like payload for new state
           new_state =
-            get_in(transition_entry, [
+            transition_entry
+            |> get_in([
               Access.all(),
               Access.key!(:target)
             ])
+            |> Enum.find(fn v -> v end)
+
+          set_states(machine, new_state)
         else
           raise ArgumentError, "Error in ':mapping', all field must within same type!"
         end
@@ -153,7 +173,7 @@ defmodule Exstate.StateMachine do
     {:ok, state}
   end
 
-  def set_states(machine, new_data) do
+  defp set_states(machine, new_data) do
     GenServer.call(machine.pid, {:set_states, new_data})
   end
 
