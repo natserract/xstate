@@ -61,7 +61,7 @@ defmodule Exstate.StateMachine do
       parent_keys = U.get_mapset_keys(map_set)
 
       # Support nested dynamic keys (e.g "created.customer_confirmed")
-      # Able to use atom for event, our will parsed all atom event to binary
+      # Able to use atom for event,
       case event do
         evt when is_binary(evt) ->
           atomic_keys =
@@ -99,7 +99,7 @@ defmodule Exstate.StateMachine do
         list_entry = map_set |> MapSet.to_list()
 
         ## Validate return of maps is same or not
-        if is_valid_map_return(list_entry) do
+        if is_valid_map(list_entry) do
           event_keys =
             case event do
               evt when is_atom(evt) -> [Atom.to_string(evt)]
@@ -135,7 +135,12 @@ defmodule Exstate.StateMachine do
               |> Enum.filter(fn v -> not is_nil(v) end)
             end
 
-          transition_entry
+          # Get target field, this's like payload for new state
+          new_state =
+            get_in(transition_entry, [
+              Access.all(),
+              Access.key!(:target)
+            ])
         else
           raise ArgumentError, "Error in ':mapping', all field must within same type!"
         end
@@ -158,9 +163,10 @@ defmodule Exstate.StateMachine do
 
   # handle_call(message, from_pid, state) -> {:reply, response, new_state}
   # see http://elixir-lang.org/docs/v1.0/elixir/GenServer.html
-  def handle_call({:set_states, new_data}, _from, state) do
+  def handle_call({:set_states, new_value}, _from, state) do
     try do
-      {:reply, state, new_data}
+      new_state = Map.put(state, :initial_state, new_value)
+      {:reply, state, new_state}
     rescue
       Protocol.UndefinedError -> {:reply, :err, state}
     end
@@ -183,8 +189,8 @@ defmodule Exstate.StateMachine do
     end
   end
 
-  @spec is_valid_map_return(list()) :: boolean()
-  defp is_valid_map_return(list) do
+  @spec is_valid_map(list()) :: boolean()
+  defp is_valid_map(list) do
     members = [
       Enum.all?(list, fn {_k, v} -> is_transitions_struct(v) end),
       Enum.all?(list, fn {_k, v} -> not is_transitions_struct(v) end)
