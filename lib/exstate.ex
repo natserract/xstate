@@ -20,22 +20,23 @@ defmodule Exstate do
       :world
 
   """
-  order_statuses = [
-    :created,
-    :customer_confirmed,
-    :awaiting_payment,
-    :paid,
-    :active,
-    :fulfilled,
-    :canceled
-  ]
 
-  order_events = [
-    :confirmed_by_customer,
-    :invoice_created,
-    :payment_confirmed,
-    :cancel
-  ]
+  # order_statuses = [
+  #   :created,
+  #   :customer_confirmed,
+  #   :awaiting_payment,
+  #   :paid,
+  #   :active,
+  #   :fulfilled,
+  #   :canceled
+  # ]
+
+  # order_events = [
+  #   :confirmed_by_customer,
+  #   :invoice_created,
+  #   :payment_confirmed,
+  #   :cancel
+  # ]
 
   init_machine =
     StateMachine.new(%StateMachine.Machine{
@@ -44,13 +45,11 @@ defmodule Exstate do
         :created => %{
           :confirmed_by_customer => %StateMachine.Transitions{
             target: "customer_confirmed",
-            predicate: nil,
             before: nil,
             callback: nil
           },
           :cancel => %StateMachine.Transitions{
             target: "canceled",
-            predicate: nil,
             before: nil,
             callback: nil
           }
@@ -58,13 +57,11 @@ defmodule Exstate do
         :customer_confirmed => %{
           :invoice_created => %StateMachine.Transitions{
             target: "awaiting_payment",
-            predicate: nil,
             before: nil,
             callback: nil
           },
           :cancel => %StateMachine.Transitions{
             target: "canceled",
-            predicate: nil,
             before: nil,
             callback: nil
           }
@@ -73,13 +70,18 @@ defmodule Exstate do
       modifiable_states: MapSet.new(["created"])
     })
 
-  IO.inspect(
-    StateMachine.can_transition(init_machine, :created),
-    structs: true
-  )
+  # IO.inspect(
+  #   StateMachine.can_transition(init_machine, "created"),
+  #   structs: true
+  # )
+
+  # IO.inspect(
+  #   StateMachine.modifiable(init_machine, :created),
+  #   structs: true
+  # )
 
   IO.inspect(
-    StateMachine.modifiable(init_machine, :created),
+    StateMachine.transition(init_machine, "created.invoice_created"),
     structs: true
   )
 end

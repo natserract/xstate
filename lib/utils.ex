@@ -18,12 +18,13 @@ defmodule Exstate.Utils do
   def get_mapset_keys(map_set) do
     map_set
     |> MapSet.to_list()
-    |> Enum.map(fn {k, _v} -> to_atom(k) end)
+    |> Enum.map(fn {k, _v} -> Atom.to_string(k) end)
   end
 
   @spec to_atom(String.t() | atom()) :: atom()
   def to_atom(event) do
     cond do
+      # use existing_atom?
       is_binary(event) -> String.to_atom(event)
       is_atom(event) -> event
     end
