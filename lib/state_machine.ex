@@ -4,9 +4,10 @@ defmodule Exstate.StateMachine do
   """
   @enforce_keys [:states]
   defstruct states: nil,
-            transitions: nil
+            pid: nil
 
   use TypeStruct
+  use GenServer
   alias Exstate.Utils, as: U
 
   defstruct(Machine,
@@ -16,7 +17,8 @@ defmodule Exstate.StateMachine do
   )
 
   @type t :: %__MODULE__{
-          states: Machine.t()
+          states: Machine.t(),
+          pid: pid()
         }
 
   @typedoc """
@@ -46,7 +48,8 @@ defmodule Exstate.StateMachine do
   @spec new(Machine.t()) :: t()
   def new(states) do
     unless is_nil(states) do
-      %__MODULE__{states: states}
+      {:ok, pid} = GenServer.start_link(__MODULE__, states, [])
+      %__MODULE__{states: states, pid: pid}
     end
   end
 
@@ -138,6 +141,29 @@ defmodule Exstate.StateMachine do
         end
       end
     end
+  end
+
+  def set_states(machine, new_data) do
+    GenServer.call(machine.pid, {:set_states, new_data})
+  end
+
+  def get_states(machine) do
+    # :sys.get_state(machine.pid)
+    GenServer.call(machine.pid, :get_states)
+  end
+
+  # handle_call(message, from_pid, state) -> {:reply, response, new_state}
+  # see http://elixir-lang.org/docs/v1.0/elixir/GenServer.html
+  def handle_call({:set_states, new_data}, _from, state) do
+    try do
+      {:reply, state, new_data}
+    rescue
+      Protocol.UndefinedError -> {:reply, :err, state}
+    end
+  end
+
+  def handle_call(:get_states, _from, state) do
+    {:reply, state, state}
   end
 
   @spec is_transitions_struct(struct()) :: boolean()
