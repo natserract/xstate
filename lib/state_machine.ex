@@ -101,25 +101,34 @@ defmodule Exstate.StateMachine do
         ## Validate return of maps is same or not
         if is_valid_map_return(list_entry) do
           event_keys =
-            event
-            |> String.split(".")
-            |> Enum.map(&String.to_existing_atom/1)
+            case event do
+              evt when is_atom(evt) -> [Atom.to_string(evt)]
+              evt when is_binary(evt) -> event |> String.split(".")
+              _ -> nil
+            end
 
-          [_ | tail_ev] = event_keys
-
-          is_has_nested =
-            list_entry
-            |> Enum.map(fn {_k, v} -> v end)
-            |> Enum.all?(fn v -> not is_transitions_struct(v) end)
+          [head_ev_key | tail_ev_key] = event_keys
+          parent_key_accessor = head_ev_key
+          second_key_accessor = Enum.find(tail_ev_key, fn v -> v end)
 
           transition_entry =
-            if is_has_nested do
-              values = Enum.map(list_entry, fn {_k, v} -> v end)
+            if has_nested_mapping(list_entry) do
+              parent_val =
+                list_entry
+                |> Enum.filter(fn {k, _val} ->
+                  match?(^k, String.to_existing_atom(parent_key_accessor))
+                end)
+                |> Enum.map(fn {_k, v} -> v end)
 
-              ## Only support 2 level access, [parent][children]
-              values
-              |> get_in([Access.all(), Access.key(Enum.find(tail_ev, fn v -> v end))])
-              |> Enum.filter(fn v -> not is_nil(v) end)
+              # !Nil => nested key
+              if not is_nil(second_key_accessor) do
+                get_in(parent_val, [
+                  Access.all(),
+                  Access.key!(String.to_existing_atom(second_key_accessor))
+                ])
+              else
+                parent_val
+              end
             else
               list_entry
               |> Enum.map(fn {k, val} -> if match?(^k, e), do: val end)
@@ -194,7 +203,7 @@ defmodule Exstate.StateMachine do
         value
         |> Map.keys()
         |> Enum.map(fn k2 ->
-          if not has_transition_key(list) do
+          if has_nested_mapping(list) do
             "#{k}.#{Atom.to_string(k2)}"
           else
             Atom.to_string(k)
@@ -203,7 +212,8 @@ defmodule Exstate.StateMachine do
         |> Enum.uniq()
       end)
 
-    if not has_transition_key(list) do
+    # Nested behaviour
+    if has_nested_mapping(list) do
       list
       |> Enum.flat_map(fn {k2, _v} -> Enum.concat(results, [Atom.to_string(k2)]) end)
       |> Enum.uniq()
@@ -212,8 +222,8 @@ defmodule Exstate.StateMachine do
     end
   end
 
-  @spec has_transition_key(nonempty_list()) :: boolean()
-  defp has_transition_key(list) do
+  @spec has_nested_mapping(nonempty_list()) :: boolean()
+  defp has_nested_mapping(list) do
     transition_keys =
       list
       |> get_in([Access.all()])
@@ -221,6 +231,6 @@ defmodule Exstate.StateMachine do
       |> Enum.map(&Atom.to_string/1)
 
     required_key = :target
-    Enum.member?(transition_keys, Atom.to_string(required_key))
+    not Enum.member?(transition_keys, Atom.to_string(required_key))
   end
 end

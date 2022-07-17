@@ -49,7 +49,7 @@ defmodule Exstate do
             callback: nil
           },
           :cancel => %StateMachine.Transitions{
-            target: "canceled",
+            target: "created canceled",
             before: nil,
             callback: nil
           }
@@ -61,7 +61,7 @@ defmodule Exstate do
             callback: nil
           },
           :cancel => %StateMachine.Transitions{
-            target: "canceled",
+            target: "customer_confirmed canceled",
             before: nil,
             callback: nil
           }
@@ -70,19 +70,19 @@ defmodule Exstate do
       modifiable_states: MapSet.new(["created"])
     })
 
-  IO.inspect(
-    StateMachine.can_transition(init_machine, "created.confirmed_by_customer"),
-    structs: true
-  )
+  # IO.inspect(
+  #   StateMachine.can_transition(init_machine, "created.confirmed_by_customer"),
+  #   structs: true
+  # )
 
   # IO.inspect(
   #   StateMachine.modifiable(init_machine, :created),
   #   structs: true
   # )
-  # IO.inspect(
-  #   StateMachine.transition(init_machine, "created.invoice_created"),
-  #   structs: true
-  # )
+  IO.inspect(
+    StateMachine.transition(init_machine, "created.cancel"),
+    structs: true
+  )
 
   # IO.inspect(:sys.get_state(init_machine.pid))
   # IO.inspect(StateMachine.get_states(init_machine))
