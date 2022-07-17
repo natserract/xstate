@@ -48,7 +48,7 @@ defmodule Exstate.StateMachine do
   @spec new(Machine.t()) :: t()
   def new(states) do
     unless is_nil(states) do
-      {:ok, pid} = GenServer.start_link(__MODULE__, states, [])
+      {:ok, pid} = GenServer.start_link(__MODULE__, states, name: __MODULE__)
       %__MODULE__{states: states, pid: pid}
     end
   end
@@ -63,26 +63,16 @@ defmodule Exstate.StateMachine do
       # Support nested dynamic keys (e.g "created.customer_confirmed")
       # Able to use atom for event, our will parsed all atom event to binary
       case event do
-        ev when is_binary(ev) ->
-          event_keys =
-            ev
-            |> String.split(".")
-            |> Enum.map(&String.to_existing_atom/1)
-
+        evt when is_binary(evt) ->
           atomic_keys =
             map_set
             |> MapSet.to_list()
-            |> merge_all_keys(parent_keys)
+            |> get_all_keys()
 
-          Enum.any?(event_keys, fn k ->
-            Enum.member?(
-              atomic_keys,
-              Atom.to_string(k)
-            )
-          end)
+          Enum.member?(atomic_keys, evt)
 
-        ev when is_atom(ev) ->
-          Enum.member?(parent_keys, Atom.to_string(ev))
+        evt when is_atom(evt) ->
+          Enum.member?(parent_keys, Atom.to_string(evt))
       end
     end
   end
@@ -108,14 +98,14 @@ defmodule Exstate.StateMachine do
       unless U.is_nil_or_empty(map_set) do
         list_entry = map_set |> MapSet.to_list()
 
-        # Validate return of maps is same or not
+        ## Validate return of maps is same or not
         if is_valid_map_return(list_entry) do
           event_keys =
             event
             |> String.split(".")
             |> Enum.map(&String.to_existing_atom/1)
 
-          [_ | tail] = event_keys
+          [_ | tail_ev] = event_keys
 
           is_has_nested =
             list_entry
@@ -126,8 +116,9 @@ defmodule Exstate.StateMachine do
             if is_has_nested do
               values = Enum.map(list_entry, fn {_k, v} -> v end)
 
+              ## Only support 2 level access, [parent][children]
               values
-              |> get_in([Access.all(), Access.key(Enum.find(tail, fn v -> v end))])
+              |> get_in([Access.all(), Access.key(Enum.find(tail_ev, fn v -> v end))])
               |> Enum.filter(fn v -> not is_nil(v) end)
             else
               list_entry
@@ -143,12 +134,16 @@ defmodule Exstate.StateMachine do
     end
   end
 
+  # initiating state
+  def init(state) do
+    {:ok, state}
+  end
+
   def set_states(machine, new_data) do
     GenServer.call(machine.pid, {:set_states, new_data})
   end
 
   def get_states(machine) do
-    # :sys.get_state(machine.pid)
     GenServer.call(machine.pid, :get_states)
   end
 
@@ -163,7 +158,11 @@ defmodule Exstate.StateMachine do
   end
 
   def handle_call(:get_states, _from, state) do
-    {:reply, state, state}
+    try do
+      {:reply, state, state}
+    rescue
+      Protocol.UndefinedError -> {:reply, :err, state}
+    end
   end
 
   @spec is_transitions_struct(struct()) :: boolean()
@@ -185,11 +184,43 @@ defmodule Exstate.StateMachine do
     Enum.any?(members)
   end
 
-  @spec merge_all_keys(nonempty_list(), list()) :: list()
-  defp merge_all_keys(list, parent_keys) do
-    list
-    |> Enum.flat_map(fn {_k, v} -> Map.keys(v) end)
-    |> Enum.map(&Atom.to_string/1)
-    |> Enum.concat(parent_keys)
+  # @returns default ["parent_key"],
+  # if nested, ["parent_key.children_key"]
+  @spec get_all_keys(nonempty_list()) :: list()
+  defp get_all_keys(list) do
+    results =
+      list
+      |> Enum.flat_map(fn {k, value} ->
+        value
+        |> Map.keys()
+        |> Enum.map(fn k2 ->
+          if not has_transition_key(list) do
+            "#{k}.#{Atom.to_string(k2)}"
+          else
+            Atom.to_string(k)
+          end
+        end)
+        |> Enum.uniq()
+      end)
+
+    if not has_transition_key(list) do
+      list
+      |> Enum.flat_map(fn {k2, _v} -> Enum.concat(results, [Atom.to_string(k2)]) end)
+      |> Enum.uniq()
+    else
+      results
+    end
+  end
+
+  @spec has_transition_key(nonempty_list()) :: boolean()
+  defp has_transition_key(list) do
+    transition_keys =
+      list
+      |> get_in([Access.all()])
+      |> Enum.flat_map(fn {_k, v} -> Map.keys(v) end)
+      |> Enum.map(&Atom.to_string/1)
+
+    required_key = :target
+    Enum.member?(transition_keys, Atom.to_string(required_key))
   end
 end

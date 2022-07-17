@@ -70,22 +70,22 @@ defmodule Exstate do
       modifiable_states: MapSet.new(["created"])
     })
 
-  # IO.inspect(
-  #   StateMachine.can_transition(init_machine, "created"),
-  #   structs: true
-  # )
+  IO.inspect(
+    StateMachine.can_transition(init_machine, "created.confirmed_by_customer"),
+    structs: true
+  )
+
   # IO.inspect(
   #   StateMachine.modifiable(init_machine, :created),
   #   structs: true
   # )
   # IO.inspect(
-  #   # StateMachine.transition(init_machine, "created.invoice_created"),
-  #   init_machine,
+  #   StateMachine.transition(init_machine, "created.invoice_created"),
   #   structs: true
   # )
 
   # IO.inspect(:sys.get_state(init_machine.pid))
-  IO.inspect(StateMachine.get_states(init_machine))
-  IO.inspect(StateMachine.set_states(init_machine, nil), structs: true)
-  IO.inspect(StateMachine.get_states(init_machine))
+  # IO.inspect(StateMachine.get_states(init_machine))
+  # IO.inspect(StateMachine.set_states(init_machine, nil), structs: true)
+  # IO.inspect(StateMachine.get_states(init_machine))
 end
