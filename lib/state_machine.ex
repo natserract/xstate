@@ -21,8 +21,6 @@ defmodule Exstate.StateMachine do
           pid: pid()
         }
 
-  @type action_t :: fun(Machine.t()) | nil
-
   defstruct(Context,
     pid: pid(),
     event: term(),
@@ -34,16 +32,9 @@ defmodule Exstate.StateMachine do
 
   defstruct(Transitions,
     target: String.t(),
-    before: action_t(),
-    callback: action_t()
+    before: fun() | nil,
+    callback: fun() | nil
   )
-
-  # Context:
-  # category: nested,
-
-  # TODO
-  # - validate initial state <-> target?
-  # - Support nested transitions, like: 'walk.in'
 
   @doc """
     Construct a new
@@ -134,104 +125,42 @@ defmodule Exstate.StateMachine do
               end
             else
               list_entry
-              |> Enum.map(fn {k, val} -> if match?(^k, e), do: val end)
+              |> Enum.map(fn {k, val} -> if(match?(^k, e), do: val) end)
               |> Enum.filter(fn v -> not is_nil(v) end)
             end
 
-          # Task.Supervisor.start_link(name: :task_supervisor)
-
           # Before transition
-          before =
+          before_func =
             transition_entry
-            |> get_in([
-              Access.all(),
-              Access.key!(:before)
-            ])
-            |> Enum.find(fn v -> v end)
-
-          # before_func =
-          #   Task.async(fn ->
-          #     if not is_nil(before), do: before.(machine)
-          #   end)
-
-          results =
-            apply(
-              fn ->
-                try do
-                  before_func =
-                    Task.async(fn ->
-                      if not is_nil(before) do
-                        func = before.(machine)
-
-                        cond do
-                          not is_tuple(func) or not is_result_tuple(func) ->
-                            raise RuntimeError,
-                                  "Return type must tuple, e.g {:ok | :err | :error, ..}"
-
-                          true ->
-                            func
-                        end
-
-                        # if not is_tuple(func) do
-
-                        # else
-                        #   keys =
-                        #     func
-                        #     |> Tuple.to_list()
-                        #     |> Enum.find(fn v -> v end)
-
-                        #   IO.puts(Atom.to_string(keys) == "ok" || Atom.to_string(keys) == "error")
-
-                        #   func
-                        # end
-                      end
-                    end)
-
-                  Task.await(before_func)
-                catch
-                  :err, msg -> "msg #{msg}"
-                end
-              end,
-              []
-            )
+            |> access_key_of_struct(:before)
+            |> async_call_arg_function(machine)
 
           # Next transition will run if before not error
-          case results do
+          case before_func do
             {:ok, _} ->
               new_state =
                 transition_entry
-                |> get_in([
-                  Access.all(),
-                  Access.key!(:target)
-                ])
-                |> Enum.find(fn v -> v end)
+                |> access_key_of_struct(:target)
 
               # State transition happens here
               set_states(machine, new_state)
 
               # After transition
-              callback =
-                transition_entry
-                |> get_in([
-                  Access.all(),
-                  Access.key!(:callback)
-                ])
-                |> Enum.find(fn v -> v end)
+              transition_entry
+              |> access_key_of_struct(:callback)
+              |> async_call_arg_function(
+                machine,
+                %{
+                  state: new_state,
+                  event: event
+                }
+              )
 
-              callback_func =
-                Task.async(fn ->
-                  if not is_nil(callback), do: callback.(1)
-                end)
+              {:ok, :done}
 
-              Task.await(callback_func)
+            {:error, reasons} ->
+              reasons
 
-            {:error, v} ->
-              v
-
-            {:error, %{errors: errors}} ->
-              errors
-
-            # Enum.map(errors, &handle_error(&1))
             _ ->
               nil
           end
@@ -293,25 +222,39 @@ defmodule Exstate.StateMachine do
     Enum.any?(members)
   end
 
-  # @returns default ["parent_key"],
-  # if nested, ["parent_key.children_key"]
+  @spec access_key_of_struct(struct(), atom()) :: struct()
+  defp access_key_of_struct(entry, key) do
+    entry
+    |> get_in([
+      Access.all(),
+      Access.key!(key)
+    ])
+    |> Enum.find(fn v -> v end)
+  end
+
+  @spec get_keys_of_struct(String.t(), term(), nonempty_list()) :: list()
+  defp get_keys_of_struct(key, val_of_struct, list) do
+    val_of_struct
+    |> Map.keys()
+    |> Enum.map(fn k2 ->
+      if has_nested_mapping(list) do
+        "#{key}.#{Atom.to_string(k2)}"
+      else
+        Atom.to_string(key)
+      end
+    end)
+    |> Enum.uniq()
+  end
+
   @spec get_all_keys(nonempty_list()) :: list()
   defp get_all_keys(list) do
     results =
-      list
-      |> Enum.flat_map(fn {k, value} ->
-        value
-        |> Map.keys()
-        |> Enum.map(fn k2 ->
-          if has_nested_mapping(list) do
-            "#{k}.#{Atom.to_string(k2)}"
-          else
-            Atom.to_string(k)
-          end
-        end)
-        |> Enum.uniq()
-      end)
+      Enum.flat_map(
+        list,
+        fn {k, value} -> get_keys_of_struct(k, value, list) end
+      )
 
+    # Returns default ["parent_key"], if nested, ["parent_key.children_key"]
     if has_nested_mapping(list) do
       list
       |> Enum.flat_map(fn {k2, _v} -> Enum.concat(results, [Atom.to_string(k2)]) end)
@@ -321,17 +264,33 @@ defmodule Exstate.StateMachine do
     end
   end
 
-  # Only accept format: {:ok, :err, :error}
-  defp is_result_tuple(tuple) do
-    keys =
-      tuple
-      |> Tuple.to_list()
-      |> Enum.find(fn v -> v end)
-      |> Atom.to_string()
+  @spec async_call_arg_function(fun(), Machine.t(), term() | nil) :: fun()
+  defp async_call_arg_function(f, machine, context \\ nil) do
+    Task.async(fn ->
+      try do
+        unless is_nil(f) do
+          next_state = unless(is_nil(context), do: Map.get(context, :state))
+          next_event = unless(is_nil(context), do: Map.get(context, :event))
 
-    keys == "ok" ||
-      keys == "error" ||
-      keys == "err"
+          func =
+            f.(%Context{
+              pid: machine.pid,
+              event: next_event,
+              access_time: :os.system_time(),
+              state: next_state
+            })
+
+          if not is_tuple(func) or not U.is_result_tuple(func) do
+            raise RuntimeError, "Return type must tuple, e.g {:ok | :err | :error, ..}"
+          else
+            func
+          end
+        end
+      rescue
+        :err -> "msg #{:err}"
+      end
+    end)
+    |> Task.await()
   end
 
   @spec has_nested_mapping(nonempty_list()) :: boolean()

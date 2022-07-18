@@ -30,6 +30,7 @@ defmodule Exstate.Utils do
     end
   end
 
+  @spec capture_link(fun()) :: term()
   def capture_link(callback) do
     Process.flag(:trap_exit, true)
     pid = spawn_link(callback)
@@ -38,5 +39,19 @@ defmodule Exstate.Utils do
       {:EXIT, ^pid, :normal} -> :ok
       {:EXIT, ^pid, reason} -> {:error, reason}
     end
+  end
+
+  @spec is_result_tuple(tuple()) :: boolean()
+  def is_result_tuple(tuple) do
+    keys =
+      tuple
+      |> Tuple.to_list()
+      |> Enum.find(fn v -> v end)
+      |> Atom.to_string()
+
+    # Only accept format: {:ok, :err, :error}
+    keys == "ok" ||
+      keys == "error" ||
+      keys == "err"
   end
 end
