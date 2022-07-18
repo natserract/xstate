@@ -53,11 +53,11 @@ defmodule Exstate.StateMachine do
     end
   end
 
-  @spec can_transition(t(), String.t() | atom()) :: boolean()
-  def can_transition(machine, event) do
+  @spec can_transition?(t(), String.t() | atom()) :: boolean()
+  def can_transition?(machine, event) do
     map_set = MapSet.new(machine.states.mapping)
 
-    unless U.is_nil_or_empty(map_set) do
+    unless U.nil_or_empty?(map_set) do
       parent_keys = U.get_mapset_keys(map_set)
 
       # Support nested dynamic keys (e.g "created.customer_confirmed")
@@ -77,29 +77,29 @@ defmodule Exstate.StateMachine do
     end
   end
 
-  @spec modifiable(t(), String.t() | atom()) :: boolean()
-  def modifiable(machine, event) do
+  @spec modifiable?(t(), String.t() | atom()) :: boolean()
+  def modifiable?(machine, event) do
     modifiable_statuses = machine.states.modifiable_states |> MapSet.new(&U.to_atom/1)
 
-    unless U.is_nil_or_empty(modifiable_statuses) do
+    unless U.nil_or_empty?(modifiable_statuses) do
       MapSet.member?(modifiable_statuses, U.to_atom(event))
     end
   end
 
   @spec transition(t(), String.t() | atom()) :: term()
   def transition(machine, event) do
-    if not can_transition(machine, event) do
+    if not can_transition?(machine, event) do
       # raise ArgumentError, need validate on runtime?
       {:err, "Event '#{event}' does not exist!"}
     else
       e = U.to_atom(event)
       map_set = MapSet.new(machine.states.mapping)
 
-      unless U.is_nil_or_empty(map_set) do
+      unless U.nil_or_empty?(map_set) do
         list_entry = map_set |> MapSet.to_list()
 
         ## Validate return of maps is same or not
-        if is_valid_map(list_entry) do
+        if valid_map?(list_entry) do
           event_keys =
             case event do
               evt when is_atom(evt) -> [Atom.to_string(evt)]
@@ -112,7 +112,7 @@ defmodule Exstate.StateMachine do
           second_key_accessor = Enum.find(tail_ev_key, fn v -> v end)
 
           transition_entry =
-            if has_nested_mapping(list_entry) do
+            if has_nested_mapping?(list_entry) do
               parent_val =
                 list_entry
                 |> Enum.filter(fn {k, _val} ->
@@ -136,13 +136,13 @@ defmodule Exstate.StateMachine do
             end
 
           # Before transition
-          before_func =
+          before_func_result =
             transition_entry
             |> access_key_of_struct(:before)
             |> async_call_arg_function(machine)
 
           # Next transition will run if before not error
-          case before_func do
+          case before_func_result do
             {:ok, _} ->
               new_state =
                 transition_entry
@@ -219,8 +219,8 @@ defmodule Exstate.StateMachine do
     end
   end
 
-  @spec is_valid_map(list()) :: boolean()
-  defp is_valid_map(list) do
+  @spec valid_map?(list()) :: boolean()
+  defp valid_map?(list) do
     members = [
       Enum.all?(list, fn {_k, v} -> is_transitions_struct(v) end),
       Enum.all?(list, fn {_k, v} -> not is_transitions_struct(v) end)
@@ -244,7 +244,7 @@ defmodule Exstate.StateMachine do
     val_of_struct
     |> Map.keys()
     |> Enum.map(fn k2 ->
-      if has_nested_mapping(list) do
+      if has_nested_mapping?(list) do
         "#{key}.#{Atom.to_string(k2)}"
       else
         Atom.to_string(key)
@@ -262,7 +262,7 @@ defmodule Exstate.StateMachine do
       )
 
     # Returns default ["parent_key"], if nested, ["parent_key.children_key"]
-    if has_nested_mapping(list) do
+    if has_nested_mapping?(list) do
       list
       |> Enum.flat_map(fn {k2, _v} -> Enum.concat(results, [Atom.to_string(k2)]) end)
       |> Enum.uniq()
@@ -288,7 +288,7 @@ defmodule Exstate.StateMachine do
               instance: machine.external
             })
 
-          if not is_tuple(func) or not U.is_tuple_result(func) do
+          if not is_tuple(func) or not U.tuple_result?(func) do
             raise RuntimeError, "Return type must tuple, e.g {:ok | :err | :error, ..}"
           else
             func
@@ -301,8 +301,8 @@ defmodule Exstate.StateMachine do
     |> Task.await()
   end
 
-  @spec has_nested_mapping(nonempty_list()) :: boolean()
-  defp has_nested_mapping(list) do
+  @spec has_nested_mapping?(nonempty_list()) :: boolean()
+  defp has_nested_mapping?(list) do
     transition_keys =
       list
       |> get_in([Access.all()])

@@ -6,8 +6,8 @@ defmodule Exstate.Utils do
     get_in(struct, locator)
   end
 
-  @spec is_nil_or_empty(nil | map()) :: boolean()
-  def is_nil_or_empty(val) do
+  @spec nil_or_empty?(nil | map()) :: boolean()
+  def nil_or_empty?(val) do
     case val do
       v when is_map(v) -> MapSet.size(v) == 0
       v when is_nil(v) -> true
@@ -41,8 +41,8 @@ defmodule Exstate.Utils do
     end
   end
 
-  @spec is_tuple_result(tuple()) :: boolean()
-  def is_tuple_result(tuple) do
+  @spec tuple_result?(tuple()) :: boolean()
+  def tuple_result?(tuple) do
     keys =
       tuple
       |> Tuple.to_list()
@@ -50,8 +50,8 @@ defmodule Exstate.Utils do
       |> Atom.to_string()
 
     # Only accept format: {:ok, :err, :error}
-    keys == "ok" ||
-      keys == "error" ||
+    keys == "ok" or
+      keys == "error" or
       keys == "err"
   end
 end

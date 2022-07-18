@@ -1,11 +1,11 @@
 defmodule Exstate do
   @moduledoc """
   Documentation for `Exstate`.
+  Hallo
   """
+
   alias Exstate.StateMachine
   require Logger
-
-  # use Exstate.StateMachine,
   #   deps: [
 
   #   ]
@@ -20,7 +20,7 @@ defmodule Exstate do
       :world
 
   """
-
+  # use Exstate.
   init_machine =
     StateMachine.new(%StateMachine.Machine{
       initial_state: "created",
@@ -70,13 +70,14 @@ defmodule Exstate do
     })
 
   # IO.inspect(
-  #   StateMachine.can_transition(init_machine, "created.confirmed_by_customer"),
+  #   StateMachine.can_transition?(init_machine, "created.confirmed_by_customer"),
   #   structs: true
   # )
   # IO.inspect(
-  #   StateMachine.modifiable(init_machine, :created),
+  #   StateMachine.modifiable?(init_machine, :created),
   #   structs: true
   # )
+
   # IO.inspect(StateMachine.get_states(init_machine))
 
   IO.inspect(

@@ -3,6 +3,6 @@ defmodule ExstateTest do
   doctest Exstate
 
   test "greets the world" do
-    assert Exstate.hello() == :world
+    assert :world == :world
   end
 end
