@@ -2,13 +2,16 @@ defmodule Exstate.StateMachine do
   @moduledoc """
   Blablac
   """
-  @enforce_keys [:states]
+  @enforce_keys [:states, :pid]
   defstruct states: nil,
-            pid: nil
+            pid: nil,
+            external: nil
 
   use TypeStruct
   use GenServer
   alias Exstate.Utils, as: U
+
+  require Logger
 
   defstruct(Machine,
     initial_state: String.t(),
@@ -18,7 +21,8 @@ defmodule Exstate.StateMachine do
 
   @type t :: %__MODULE__{
           states: Machine.t(),
-          pid: pid()
+          pid: pid(),
+          external: term()
         }
 
   defstruct(Context,
@@ -26,8 +30,10 @@ defmodule Exstate.StateMachine do
     event: term(),
     # ^ The event that caused the transition
     access_time: term(),
-    state: term()
+    state: term(),
     # ^ The resolved machine state, after transition
+    instance: term()
+    # ^ Any external value you want to pass it
   )
 
   defstruct(Transitions,
@@ -39,11 +45,11 @@ defmodule Exstate.StateMachine do
   @doc """
     Construct a new
   """
-  @spec new(Machine.t()) :: t()
-  def new(states) do
+  @spec new(Machine.t(), term()) :: t()
+  def new(states, external \\ nil) do
     unless is_nil(states) do
       {:ok, pid} = GenServer.start_link(__MODULE__, states, name: __MODULE__)
-      %__MODULE__{states: states, pid: pid}
+      %__MODULE__{states: states, pid: pid, external: external}
     end
   end
 
@@ -158,11 +164,12 @@ defmodule Exstate.StateMachine do
 
               {:ok, :done}
 
-            {:error, reasons} ->
-              reasons
+            {:error, reason} ->
+              Logger.error("Before transition error: #{reason}")
+              {:error, :bad, reason}
 
             _ ->
-              nil
+              :nothing
           end
         else
           raise ArgumentError, "Error in ':mapping', all field must within same type!"
@@ -277,10 +284,11 @@ defmodule Exstate.StateMachine do
               pid: machine.pid,
               event: next_event,
               access_time: :os.system_time(),
-              state: next_state
+              state: next_state,
+              instance: machine.external
             })
 
-          if not is_tuple(func) or not U.is_result_tuple(func) do
+          if not is_tuple(func) or not U.is_tuple_result(func) do
             raise RuntimeError, "Return type must tuple, e.g {:ok | :err | :error, ..}"
           else
             func

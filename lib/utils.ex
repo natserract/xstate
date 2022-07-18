@@ -41,8 +41,8 @@ defmodule Exstate.Utils do
     end
   end
 
-  @spec is_result_tuple(tuple()) :: boolean()
-  def is_result_tuple(tuple) do
+  @spec is_tuple_result(tuple()) :: boolean()
+  def is_tuple_result(tuple) do
     keys =
       tuple
       |> Tuple.to_list()

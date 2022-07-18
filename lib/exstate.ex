@@ -31,6 +31,7 @@ defmodule Exstate do
             target: "customer_confirmed",
             before: fn context ->
               try do
+                # throw(:error)
                 Process.sleep(2000)
                 IO.inspect(context)
                 IO.puts("Before")
