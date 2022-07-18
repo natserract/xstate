@@ -29,4 +29,14 @@ defmodule Exstate.Utils do
       is_atom(event) -> event
     end
   end
+
+  def capture_link(callback) do
+    Process.flag(:trap_exit, true)
+    pid = spawn_link(callback)
+
+    receive do
+      {:EXIT, ^pid, :normal} -> :ok
+      {:EXIT, ^pid, reason} -> {:error, reason}
+    end
+  end
 end

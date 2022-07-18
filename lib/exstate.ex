@@ -46,8 +46,32 @@ defmodule Exstate do
         :created => %{
           :confirmed_by_customer => %StateMachine.Transitions{
             target: "customer_confirmed",
-            before: nil,
-            callback: nil
+            before: fn
+              v ->
+                try do
+                  # exit(:crash)
+                  # Process.exit(v.pid, :kill)
+                  # IO.inspect(v.pid)
+                  # {:ok, ""}
+
+                  # :error
+                  # :error
+                  throw(:error)
+                  # TryClauseError.exception("ERror")
+                  # {:ok}
+                catch
+                  _, reason -> {:error, reason}
+                end
+
+                # exit(:normal)
+
+                # Process.sleep(1000)
+                # IO.inspect(v.pid)
+            end,
+            callback: fn v ->
+              Process.sleep(2000)
+              IO.puts("After #{v}")
+            end
           },
           :cancel => %StateMachine.Transitions{
             target: "created canceled",
@@ -83,7 +107,7 @@ defmodule Exstate do
   # IO.inspect(StateMachine.get_states(init_machine))
 
   IO.inspect(
-    StateMachine.transition(init_machine, "customer_confirmed.cancel"),
+    StateMachine.transition(init_machine, "created.confirmed_by_customer"),
     structs: true
   )
 
