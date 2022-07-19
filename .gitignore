@@ -26,3 +26,5 @@ exstate-*.tar
 /tmp/
 
 Notes.md
+
+.DS_Store
