@@ -2,6 +2,7 @@ defmodule Exstate do
   @moduledoc ~S"""
   This is the main `Exstate` module.
 
+  ## Concept
    An abstract state machine is a software component that defines a finite set of states:
 
   - One state is defined as the initial state. When a machine starts to execute, it automatically enters this state.

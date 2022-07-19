@@ -1,9 +1,9 @@
 defmodule Exstate.StateMachine do
   @moduledoc """
   Exstate is split into 3 parts:
-    - `Machine`
-    - `Context`
-    - `Transitions`
+    - `Machine`: Struct used to build initialization for a machine consisting of state, events, and several other configurations.
+    - `Context`: A payload or extended state that is passed through the `before` and `callback` function arguments, when the transition occurs
+    - `Transitions`: Define how the machine reacts to events dynamically.
   
   # Concepts
   A finite state machine is a mathematical model of computation that describes the behavior of a system that can be in only one state at any given time. For example, let's say you can be represented by a state machine with a finite number (2) of states: asleep or awake. At any given time, you're either asleep or awake. It is impossible for you to be both asleep and awake at the same time, and it is impossible for you to be neither asleep nor awake.
@@ -17,6 +17,32 @@ defmodule Exstate.StateMachine do
   
   State refers to some finite, qualitative "mode" or "status" of a system being modeled by a state machine, and does not describe all the (possibly infinite) data related to that system. For example, water can be in 1 of 4 states: ice, liquid, gas, or plasma. However, the temperature of water can vary and its measurement is quantitative and infinite.
   
+  
+  # Layouts
+  ```
+    %StateMachine.Machine{
+      initial_state: "created",
+      mapping: %{
+        :created => %{
+        # ^ event
+          :confirmed_by_customer => %StateMachine.Transitions{
+            # ^ nested event
+            target: "customer_confirmed",
+            # ^ Value to be used for the next state
+            before: nil,
+            # ^ Function that's called before the transition occurs
+            callback: nil
+            # ^ Function that's called after the transition occurs
+            #
+            # Notes: `before` & `callback` has a parameter of type %Context{..}
+            # e.g: before: fn context -> IO.inspect(context) end
+          }
+        },
+        ...
+      },
+      modifiable_states: MapSet.new(["created"])
+    }
+  ```
   """
 
   @enforce_keys [:states, :pid]
@@ -66,7 +92,15 @@ defmodule Exstate.StateMachine do
   end
 
   @doc """
-    Construct a new
+    Construct a new machine
+  
+    Parameters
+    - `state`: The `machine` state you want to construct.
+    - `external`: Any external value you want to pass it (e.g: ecto)
+  
+    ```
+    StateMachine.new(...)
+    ```
   """
   @spec new(Machine.t(), term()) :: t()
   def new(states, external \\ nil) do
@@ -76,6 +110,15 @@ defmodule Exstate.StateMachine do
     end
   end
 
+  @doc """
+    Check transition matches the event
+  
+    Support for nested key, **only 2 level** (e.g: "create.customer_confirmed")
+  
+    ```
+    StateMachine.can_transition?(state, event)
+    ```
+  """
   @spec can_transition?(t(), String.t() | atom()) :: boolean()
   def can_transition?(machine, event) do
     map_set = MapSet.new(machine.states.mapping)
@@ -100,6 +143,14 @@ defmodule Exstate.StateMachine do
     end
   end
 
+  @doc """
+    Check is current state is modifiable
+  
+    ```
+    current_state = StateMachine.get_states(state)
+    StateMachine.modifiable?(machine, current_state)
+    ```
+  """
   @spec modifiable?(t(), term()) :: boolean()
   def modifiable?(machine, current_state) do
     modifiable_statuses =
@@ -109,7 +160,20 @@ defmodule Exstate.StateMachine do
     MapSet.member?(modifiable_statuses, current_state)
   end
 
-  @spec transition(t(), String.t() | atom()) :: term()
+  @doc """
+    Invoke transition
+  
+    - `machine`: the Machine
+    - `event`: the event that causes the transition
+  
+    ```
+     StateMachine.transition(state, :created)
+  
+     #  Nested?, should using string
+     StateMachine.transition(state, "created.cancel")
+    ```
+  """
+  @spec transition(Machine.t(), String.t() | atom()) :: term()
   def transition(machine, event) do
     if not can_transition?(machine, event) do
       # raise ArgumentError, need validate on runtime?
@@ -213,6 +277,14 @@ defmodule Exstate.StateMachine do
     GenServer.call(machine.pid, {:set_states, new_state})
   end
 
+  @doc """
+    Accessing the current state from the `machine`
+  
+    ```
+    StateMachine.get_states(machine)
+    ```
+  """
+  @spec get_states(Machine.t()) :: term()
   def get_states(machine) do
     GenServer.call(machine.pid, :get_states)
   end
