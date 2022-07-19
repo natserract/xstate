@@ -34,9 +34,9 @@ defmodule Exstate do
             before: fn context ->
               try do
                 # throw(:error)
-                # Process.sleep(2000)
-                IO.inspect(context)
-                # IO.puts("Before")
+                Process.sleep(2000)
+                # IO.inspect(context)
+                IO.puts("Before")
                 {:ok, "Before"}
               catch
                 _, reason -> {:error, reason}

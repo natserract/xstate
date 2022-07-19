@@ -101,24 +101,35 @@ defmodule Exstate.StateMachine do
       e = U.to_atom(event)
       map_set = MapSet.new(machine.states.mapping)
 
+      event_keys =
+        case event do
+          evt when is_atom(evt) ->
+            [Atom.to_string(evt)]
+
+          evt when is_binary(evt) ->
+            String.split(event, ".")
+
+          _ ->
+            nil
+        end
+
+      [head_ev_key | tail_ev_key] = event_keys
+      parent_key_accessor = head_ev_key
+      second_key_accessor = Enum.find(tail_ev_key, fn v -> v end)
+
       unless U.nil_or_empty?(map_set) do
-        list_entry = map_set |> MapSet.to_list()
+        list_entry = MapSet.to_list(map_set)
 
-        ## Validate return of maps is same or not
-        if valid_map?(list_entry) do
-          event_keys =
-            case event do
-              evt when is_atom(evt) -> [Atom.to_string(evt)]
-              evt when is_binary(evt) -> event |> String.split(".")
-              _ -> nil
-            end
-
-          [head_ev_key | tail_ev_key] = event_keys
-          parent_key_accessor = head_ev_key
-          second_key_accessor = Enum.find(tail_ev_key, fn v -> v end)
-
+        # Validate type of mapping
+        if not valid_map?(list_entry) do
+          raise ArgumentError, "Error in ':mapping', all field must within same type!"
+        else
           transition_entry =
-            if has_nested_mapping?(list_entry) do
+            if not has_nested_mapping?(list_entry) do
+              list_entry
+              |> Enum.map(fn {k, val} -> if(match?(^k, e), do: val) end)
+              |> Enum.filter(fn v -> not is_nil(v) end)
+            else
               parent_val =
                 list_entry
                 |> Enum.filter(fn {k, _val} ->
@@ -126,29 +137,26 @@ defmodule Exstate.StateMachine do
                 end)
                 |> Enum.map(fn {_k, v} -> v end)
 
-              # !Nil => nested key
-              if not is_nil(second_key_accessor) do
-                get_in(parent_val, [
-                  Access.all(),
-                  Access.key!(String.to_existing_atom(second_key_accessor))
-                ])
-              else
-                parent_val
-              end
-            else
-              list_entry
-              |> Enum.map(fn {k, val} -> if(match?(^k, e), do: val) end)
-              |> Enum.filter(fn v -> not is_nil(v) end)
+              # !nil => nested key
+              if(is_nil(second_key_accessor),
+                do: parent_val,
+                else:
+                  get_in(parent_val, [
+                    Access.all(),
+                    Access.key!(String.to_existing_atom(second_key_accessor))
+                  ])
+              )
             end
 
-          # Lazy func
-          after_transition = fn ->
-            new_state =
-              transition_entry
-              |> access_key_of_struct(:target)
+          # Before transition
+          before_arg = access_key_of_struct(transition_entry, :before)
+          new_state = access_key_of_struct(transition_entry, :target)
 
+          apply_transition = fn ->
             # State transition happens here
-            set_states(machine, new_state)
+            transition_entry
+            |> access_key_of_struct(:target)
+            |> set_states(machine)
 
             # After transition
             transition_entry
@@ -164,34 +172,16 @@ defmodule Exstate.StateMachine do
             {:ok, :done}
           end
 
-          # Before transition
-          before_arg = transition_entry |> access_key_of_struct(:before)
-
+          # next transition will run if prev process not contains error
           case before_arg do
-            arg when is_nil(arg) ->
-              after_transition.()
+            before_func when is_nil(before_func) ->
+              apply_transition.()
 
-            arg when is_function(arg) ->
-              before_func_result = before_arg |> async_call_arg_function!(machine)
-
-              # Next transition will run if before not error
-              case before_func_result do
-                {:ok} ->
-                  after_transition.()
-
-                {:ok, _} ->
-                  after_transition.()
-
-                {:error, reason} ->
-                  Logger.error("Before transition error: #{reason}")
-                  {:error, :bad, reason}
-
-                _ ->
-                  :nothing
-              end
+            before_func when is_function(before_func) ->
+              before_func
+              |> async_call_arg_function!(machine)
+              |> handle_tuple_result!(apply_transition)
           end
-        else
-          raise ArgumentError, "Error in ':mapping', all field must within same type!"
         end
       end
     end
@@ -202,7 +192,7 @@ defmodule Exstate.StateMachine do
     {:ok, state}
   end
 
-  defp set_states(machine, new_state) do
+  defp set_states(new_state, machine) do
     GenServer.call(machine.pid, {:set_states, new_state})
   end
 
@@ -281,12 +271,30 @@ defmodule Exstate.StateMachine do
       )
 
     # Returns default ["parent_key"], if nested, ["parent_key.children_key"]
-    if has_nested_mapping?(list) do
-      list
-      |> Enum.flat_map(fn {k2, _v} -> Enum.concat(results, [Atom.to_string(k2)]) end)
-      |> Enum.uniq()
-    else
-      results
+    if(not has_nested_mapping?(list),
+      do: results,
+      else:
+        list
+        |> Enum.flat_map(fn {k2, _v} -> Enum.concat(results, [Atom.to_string(k2)]) end)
+        |> Enum.uniq()
+    )
+  end
+
+  @spec handle_tuple_result!(term(), fun()) :: term()
+  defp handle_tuple_result!(value, func) do
+    case value do
+      {:ok} ->
+        func.()
+
+      {:ok, _} ->
+        func.()
+
+      {:error, reason} ->
+        Logger.error("Before transition error: #{reason}")
+        {:error, :bad, reason}
+
+      _ ->
+        :nothing
     end
   end
 
