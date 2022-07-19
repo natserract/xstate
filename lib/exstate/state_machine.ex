@@ -101,7 +101,7 @@ defmodule Exstate.StateMachine do
       e = U.to_atom(event)
       map_set = MapSet.new(machine.states.mapping)
 
-      event_keys =
+      [head_ev_key | tail_ev_key] =
         case event do
           evt when is_atom(evt) ->
             [Atom.to_string(evt)]
@@ -113,7 +113,6 @@ defmodule Exstate.StateMachine do
             nil
         end
 
-      [head_ev_key | tail_ev_key] = event_keys
       parent_key_accessor = head_ev_key
       second_key_accessor = Enum.find(tail_ev_key, fn v -> v end)
 
@@ -322,14 +321,17 @@ defmodule Exstate.StateMachine do
       end
     end
 
-    Task.async(fn ->
-      try do
-        call_func.()
-      rescue
-        :err -> Process.exit(machine.pid, :kill)
-      end
-    end)
-    |> Task.await()
+    # HACK: Working properly
+    results =
+      Task.async(fn ->
+        try do
+          call_func.()
+        rescue
+          _ -> Process.exit(machine.pid, :kill)
+        end
+      end)
+
+    Task.await(results)
   end
 
   @spec has_nested_mapping?(nonempty_list()) :: boolean()
