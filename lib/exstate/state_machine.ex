@@ -83,13 +83,13 @@ defmodule Exstate.StateMachine do
     end
   end
 
-  @spec modifiable?(t(), String.t() | atom()) :: boolean()
-  def modifiable?(machine, event) do
-    modifiable_statuses = machine.states.modifiable_states |> MapSet.new(&U.to_atom/1)
+  @spec modifiable?(t(), term()) :: boolean()
+  def modifiable?(machine, current_state) do
+    modifiable_statuses =
+      machine.states.modifiable_states
+      |> MapSet.new(fn v -> v end)
 
-    unless U.nil_or_empty?(modifiable_statuses) do
-      MapSet.member?(modifiable_statuses, U.to_atom(event))
-    end
+    MapSet.member?(modifiable_statuses, current_state)
   end
 
   @spec transition(t(), String.t() | atom()) :: term()
@@ -141,12 +141,6 @@ defmodule Exstate.StateMachine do
               |> Enum.filter(fn v -> not is_nil(v) end)
             end
 
-          # Before transition
-          before_func_result =
-            transition_entry
-            |> access_key_of_struct(:before)
-            |> async_call_arg_function!(machine)
-
           # Lazy func
           after_transition = fn ->
             new_state =
@@ -170,20 +164,31 @@ defmodule Exstate.StateMachine do
             {:ok, :done}
           end
 
-          # Next transition will run if before not error
-          case before_func_result do
-            {:ok} ->
+          # Before transition
+          before_arg = transition_entry |> access_key_of_struct(:before)
+
+          case before_arg do
+            arg when is_nil(arg) ->
               after_transition.()
 
-            {:ok, _} ->
-              after_transition.()
+            arg when is_function(arg) ->
+              before_func_result = before_arg |> async_call_arg_function!(machine)
 
-            {:error, reason} ->
-              Logger.error("Before transition error: #{reason}")
-              {:error, :bad, reason}
+              # Next transition will run if before not error
+              case before_func_result do
+                {:ok} ->
+                  after_transition.()
 
-            _ ->
-              :nothing
+                {:ok, _} ->
+                  after_transition.()
+
+                {:error, reason} ->
+                  Logger.error("Before transition error: #{reason}")
+                  {:error, :bad, reason}
+
+                _ ->
+                  :nothing
+              end
           end
         else
           raise ArgumentError, "Error in ':mapping', all field must within same type!"
@@ -197,8 +202,8 @@ defmodule Exstate.StateMachine do
     {:ok, state}
   end
 
-  defp set_states(machine, new_data) do
-    GenServer.call(machine.pid, {:set_states, new_data})
+  defp set_states(machine, new_state) do
+    GenServer.call(machine.pid, {:set_states, new_state})
   end
 
   def get_states(machine) do
