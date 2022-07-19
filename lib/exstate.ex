@@ -1,115 +1,25 @@
 defmodule Exstate do
-  alias Exstate.StateMachine
-  require Logger
-
   @moduledoc ~S"""
-  `Exstate` is Elixir state machine library
+  This is the main `Exstate` module.
 
-  Top-level `use` aliases
-  In almost all cases, you want:
-      use Exceptional
-  If you only want the operators:
-      use Exceptional, only: :operators
-  If you only want named functions:
-      use Exceptional, only: :named_functions
-  If you like to live extremely dangerously. This is _not recommended_.
-  Please be certain that you want to override the standard lib before using.
-      use Exceptional, include: :overload_pipe
+   An abstract state machine is a software component that defines a finite set of states:
+
+  - One state is defined as the initial state. When a machine starts to execute, it automatically enters this state.
+  - Each state can define actions that occur when a machine enters or exits that state. Actions will typically have side effects.
+  - Each state can define events that trigger a transition.
+  - A transition defines how a machine would react to the event, by exiting one state and entering another state.
+  - A transition can define actions that occur when the transition happens. Actions will typically have side effects.
+
+  When “running” a state machine, this abstract state machine is executed.  The first thing that happens is that the state machine enters the “initial state”.  Then, events are passed to the machine as soon as they happen.  When an event happens:
+
+  - The event is checked against the current state’s transitions.
+  - If a transition matches the event, that transition “happens”.
+  - By virtue of a transition “happening”, states are exited, and entered and the relevant actions are performed
+  - The machine immediately is in the new state, ready to process the next event.
+
+  Top-level `use`:
+      use Exstate.StateMachine
   """
 
-  # defmacro __using__(opts \\ []) do
-  #   quote bind_quoted: [opts: opts] do
-  #     use Exstate.StateMachine, opts
-  #   end
-  # end
-
-  init_machine =
-    StateMachine.new(%StateMachine.Machine{
-      initial_state: "created",
-      mapping: %{
-        # TODO: Documenting layout of mapping
-        :created => %{
-          :confirmed_by_customer => %StateMachine.Transitions{
-            target: "customer_confirmed",
-            before: fn context ->
-              try do
-                # throw(:error)
-                Process.sleep(2000)
-                # IO.inspect(context)
-                IO.puts("Before")
-                {:ok, "Before"}
-              catch
-                _, reason -> {:error, reason}
-              end
-            end,
-            callback: fn context ->
-              # Process.sleep(4000)
-              IO.inspect(context)
-              # IO.puts("After")
-              {:ok, "After"}
-            end
-          },
-          :cancel => %StateMachine.Transitions{
-            target: "created canceled",
-            before: nil,
-            callback: nil
-          }
-        },
-        :customer_confirmed => %{
-          :invoice_created => %StateMachine.Transitions{
-            target: "awaiting_payment",
-            before: nil,
-            callback: nil
-          },
-          :cancel => %StateMachine.Transitions{
-            target: "customer_confirmed canceled",
-            before: nil,
-            callback: nil
-          }
-        }
-      },
-      modifiable_states: MapSet.new(["created"])
-    })
-
-  # IO.inspect(
-  #   StateMachine.can_transition?(init_machine, "created.confirmed_by_customer"),
-  #   structs: true
-  # )
-
-  # IO.inspect(
-  #   StateMachine.modifiable?(init_machine),
-  #   structs: true
-  # )
-
-  # IO.inspect(StateMachine.get_states(init_machine))
-
-  # IO.inspect(
-
-  # IO.inspect(
-  #   StateMachine.modifiable?(init_machine, StateMachine.get_states(init_machine)),
-  #   structs: true
-  # )
-  IO.inspect(
-    StateMachine.get_states(init_machine),
-    structs: true
-  )
-
-  StateMachine.transition(init_machine, "created.confirmed_by_customer")
-
-  IO.inspect(
-    StateMachine.get_states(init_machine),
-    structs: true
-  )
-
-  # IO.inspect(
-  #   StateMachine.get_states(init_machine),
-  #   structs: true
-  # )
-
-  # IO.inspect(
-  #   StateMachine.modifiable?(init_machine, StateMachine.get_states(init_machine)),
-  #   structs: true
-  # )
-
-  # IO.inspect(StateMachine.get_states(init_machine))
+  use Exstate.StateMachine
 end

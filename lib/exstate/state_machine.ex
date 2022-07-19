@@ -1,7 +1,14 @@
 defmodule Exstate.StateMachine do
   @moduledoc """
-  Blablac
+  Exstate is split into 3 parts:
+    - `Machine`
+    - `Context`
+    - `Transitions`
+  
+  ## Layout
+  blabla
   """
+
   @enforce_keys [:states, :pid]
   defstruct states: nil,
             pid: nil,
@@ -147,17 +154,18 @@ defmodule Exstate.StateMachine do
               )
             end
 
-          # Before transition
+          # before transition
           before_arg = access_key_of_struct(transition_entry, :before)
           new_state = access_key_of_struct(transition_entry, :target)
 
+          # not yet evaluated
           apply_transition = fn ->
-            # State transition happens here
+            # state transition happens here
             transition_entry
             |> access_key_of_struct(:target)
             |> set_states(machine)
 
-            # After transition
+            # after transition
             transition_entry
             |> access_key_of_struct(:callback)
             |> async_call_arg_function!(
@@ -173,11 +181,11 @@ defmodule Exstate.StateMachine do
 
           # next transition will run if prev process not contains error
           case before_arg do
-            before_func when is_nil(before_func) ->
+            argument when is_nil(argument) ->
               apply_transition.()
 
-            before_func when is_function(before_func) ->
-              before_func
+            argument when is_function(argument) ->
+              argument
               |> async_call_arg_function!(machine)
               |> handle_tuple_result!(apply_transition)
           end
@@ -327,7 +335,7 @@ defmodule Exstate.StateMachine do
         try do
           call_func.()
         rescue
-          _ -> Process.exit(machine.pid, :kill)
+          _ -> :failed
         end
       end)
 
