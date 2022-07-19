@@ -292,29 +292,33 @@ defmodule Exstate.StateMachine do
 
   @spec async_call_arg_function!(fun(), Machine.t(), term() | nil) :: fun()
   defp async_call_arg_function!(f, machine, context \\ nil) do
+    call_func = fn ->
+      if is_function(f) do
+        next_state = unless(is_nil(context), do: Map.get(context, :state))
+        next_event = unless(is_nil(context), do: Map.get(context, :event))
+
+        func =
+          f.(%Context{
+            pid: machine.pid,
+            event: next_event,
+            access_time: :os.system_time(),
+            state: next_state,
+            instance: machine.external
+          })
+
+        if not is_tuple(func) or not U.tuple_result?(func) do
+          raise RuntimeError, "Return type must tuple, e.g {:ok | :err | :error, ..}"
+        else
+          func
+        end
+      end
+    end
+
     Task.async(fn ->
       try do
-        unless is_nil(f) do
-          next_state = unless(is_nil(context), do: Map.get(context, :state))
-          next_event = unless(is_nil(context), do: Map.get(context, :event))
-
-          func =
-            f.(%Context{
-              pid: machine.pid,
-              event: next_event,
-              access_time: :os.system_time(),
-              state: next_state,
-              instance: machine.external
-            })
-
-          if not is_tuple(func) or not U.tuple_result?(func) do
-            raise RuntimeError, "Return type must tuple, e.g {:ok | :err | :error, ..}"
-          else
-            func
-          end
-        end
+        call_func.()
       rescue
-        :err -> "msg #{:err}"
+        :err -> Process.exit(machine.pid, :kill)
       end
     end)
     |> Task.await()

@@ -35,7 +35,7 @@ defmodule Exstate do
               try do
                 # throw(:error)
                 # Process.sleep(2000)
-                # IO.inspect(context)
+                IO.inspect(context)
                 # IO.puts("Before")
                 {:ok, "Before"}
               catch
@@ -44,7 +44,7 @@ defmodule Exstate do
             end,
             callback: fn context ->
               # Process.sleep(4000)
-              # IO.inspect(context)
+              IO.inspect(context)
               # IO.puts("After")
               {:ok, "After"}
             end
@@ -77,18 +77,39 @@ defmodule Exstate do
   # )
 
   # IO.inspect(
-  #   StateMachine.modifiable?(init_machine, :created),
+  #   StateMachine.modifiable?(init_machine),
   #   structs: true
   # )
 
-  IO.inspect(StateMachine.get_states(init_machine))
+  # IO.inspect(StateMachine.get_states(init_machine))
 
   # IO.inspect(
-  # StateMachine.get_states(init_machine)
+
+  # IO.inspect(
+  #   StateMachine.modifiable?(init_machine, StateMachine.get_states(init_machine)),
+  #   structs: true
+  # )
+  IO.inspect(
+    StateMachine.get_states(init_machine),
+    structs: true
+  )
+
   StateMachine.transition(init_machine, "created.confirmed_by_customer")
-  # StateMachine.get_states(init_machine)
-  # structs: true
+
+  IO.inspect(
+    StateMachine.get_states(init_machine),
+    structs: true
+  )
+
+  # IO.inspect(
+  #   StateMachine.get_states(init_machine),
+  #   structs: true
   # )
 
-  IO.inspect(StateMachine.get_states(init_machine))
+  # IO.inspect(
+  #   StateMachine.modifiable?(init_machine, StateMachine.get_states(init_machine)),
+  #   structs: true
+  # )
+
+  # IO.inspect(StateMachine.get_states(init_machine))
 end
