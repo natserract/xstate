@@ -42,6 +42,12 @@ defmodule Exstate.StateMachine do
     callback: fun() | nil
   )
 
+  defmacro __using__(_) do
+    quote do
+      import unquote(__MODULE__)
+    end
+  end
+
   @doc """
     Construct a new
   """
@@ -139,30 +145,38 @@ defmodule Exstate.StateMachine do
           before_func_result =
             transition_entry
             |> access_key_of_struct(:before)
-            |> async_call_arg_function(machine)
+            |> async_call_arg_function!(machine)
+
+          # Lazy func
+          after_transition = fn ->
+            new_state =
+              transition_entry
+              |> access_key_of_struct(:target)
+
+            # State transition happens here
+            set_states(machine, new_state)
+
+            # After transition
+            transition_entry
+            |> access_key_of_struct(:callback)
+            |> async_call_arg_function!(
+              machine,
+              %{
+                state: new_state,
+                event: event
+              }
+            )
+
+            {:ok, :done}
+          end
 
           # Next transition will run if before not error
           case before_func_result do
+            {:ok} ->
+              after_transition.()
+
             {:ok, _} ->
-              new_state =
-                transition_entry
-                |> access_key_of_struct(:target)
-
-              # State transition happens here
-              set_states(machine, new_state)
-
-              # After transition
-              transition_entry
-              |> access_key_of_struct(:callback)
-              |> async_call_arg_function(
-                machine,
-                %{
-                  state: new_state,
-                  event: event
-                }
-              )
-
-              {:ok, :done}
+              after_transition.()
 
             {:error, reason} ->
               Logger.error("Before transition error: #{reason}")
@@ -178,7 +192,7 @@ defmodule Exstate.StateMachine do
     end
   end
 
-  # initiating state
+  @doc false
   def init(state) do
     {:ok, state}
   end
@@ -198,15 +212,15 @@ defmodule Exstate.StateMachine do
       new_state = Map.put(state, :initial_state, new_value)
       {:reply, state, new_state}
     rescue
-      Protocol.UndefinedError -> {:reply, :err, state}
+      Protocol.UndefinedError -> {:reply, :err, nil}
     end
   end
 
   def handle_call(:get_states, _from, state) do
     try do
-      {:reply, state, state}
+      {:reply, state.initial_state, state}
     rescue
-      Protocol.UndefinedError -> {:reply, :err, state}
+      Protocol.UndefinedError -> {:reply, :err, nil}
     end
   end
 
@@ -271,8 +285,8 @@ defmodule Exstate.StateMachine do
     end
   end
 
-  @spec async_call_arg_function(fun(), Machine.t(), term() | nil) :: fun()
-  defp async_call_arg_function(f, machine, context \\ nil) do
+  @spec async_call_arg_function!(fun(), Machine.t(), term() | nil) :: fun()
+  defp async_call_arg_function!(f, machine, context \\ nil) do
     Task.async(fn ->
       try do
         unless is_nil(f) do

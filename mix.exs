@@ -7,7 +7,19 @@ defmodule Exstate.MixProject do
       version: "0.1.0",
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      description: "State machine library for Elixir",
+      source_url: "https://github.com/natserract/exstate",
+      homepage_url: "https://github.com/natserract/exstate",
+      package: [
+        maintainers: ["Alfin Surya"],
+        licenses: ["MIT"],
+        links: %{"GitHub" => "https://github.com/natserract/exstate"}
+      ],
+      docs: [
+        extras: ["README.md"],
+        main: "readme"
+      ]
     ]
   end
 
@@ -23,6 +35,7 @@ defmodule Exstate.MixProject do
     [
       {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.27", only: :dev, runtime: false},
       {:type_struct, "~> 0.1.0"}
     ]
   end
