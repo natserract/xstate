@@ -1,8 +1,8 @@
-defmodule ExstateTest do
+defmodule XstateTest do
   use ExUnit.Case
 
-  import Exstate
-  alias Exstate.StateMachine
+  import Xstate
+  alias Xstate.StateMachine
 
   test "Check existing event and event key accessor return properly" do
     state =

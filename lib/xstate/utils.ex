@@ -1,4 +1,4 @@
-defmodule Exstate.Utils do
+defmodule Xstate.Utils do
   @moduledoc false
   @spec get_in_struct(struct(), nonempty_list(atom())) :: term()
   def get_in_struct(struct, location) do

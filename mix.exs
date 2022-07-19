@@ -1,20 +1,20 @@
-defmodule Exstate.MixProject do
+defmodule Xstate.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :exstate,
+      app: :xstate,
       version: "0.1.0",
       elixir: "~> 1.13",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       description: "State machine library for Elixir",
-      source_url: "https://github.com/natserract/exstate",
-      homepage_url: "https://github.com/natserract/exstate",
+      source_url: "https://github.com/natserract/xstate",
+      homepage_url: "https://github.com/natserract/xstate",
       package: [
         maintainers: ["Alfin Surya"],
         licenses: ["MIT"],
-        links: %{"GitHub" => "https://github.com/natserract/exstate"}
+        links: %{"GitHub" => "https://github.com/natserract/xstate"}
       ],
       docs: [
         extras: ["README.md"],

@@ -1,6 +1,6 @@
-defmodule Exstate.StateMachine do
+defmodule Xstate.StateMachine do
   @moduledoc """
-  Exstate is split into 3 parts:
+  Xstate is split into 3 parts:
     - `Machine`: Struct used to build initialization for a machine consisting of state, events, and several other configurations.
     - `Context`: A payload or extended state that is passed through the `before` and `callback` function arguments, when the transition occurs
     - `Transitions`: Define how the machine reacts to events dynamically.
@@ -52,7 +52,7 @@ defmodule Exstate.StateMachine do
 
   use TypeStruct
   use GenServer
-  alias Exstate.Utils, as: U
+  alias Xstate.Utils, as: U
 
   require Logger
 

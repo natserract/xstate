@@ -1,6 +1,6 @@
-defmodule Exstate do
+defmodule Xstate do
   @moduledoc ~S"""
-  This is the main `Exstate` module.
+  This is the main `Xstate` module.
 
   ## Concept
    An abstract state machine is a software component that defines a finite set of states:
@@ -24,8 +24,8 @@ defmodule Exstate do
   - [A-Level Comp Sci: Finite State Machine](https://www.youtube.com/watch?v=4rNYAvsSkwk)
 
   Top-level `use`:
-      use Exstate.StateMachine
+      use Xstate.StateMachine
   """
 
-  use Exstate.StateMachine
+  use Xstate.StateMachine
 end

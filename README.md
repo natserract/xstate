@@ -1,23 +1,23 @@
-# Exstate
-`Exstate` is a State Machine library for Elixir
+# Xstate
+`Xstate` is a State Machine library for Elixir
 
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `exstate` to your list of dependencies in `mix.exs`:
+by adding `xstate` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:exstate, "~> 0.1.0"}
+    {:xstate, "~> 0.1.0"}
   ]
 end
 ```
 
 ## Usage
 ```elixir
-import Exstate
-alias Exstate.StateMachine
+import Xstate
+alias Xstate.StateMachine
 
 func = fn msg, inside ->
   IO.puts("#{msg} in #{inside}")
