@@ -65,10 +65,14 @@ defmodule ExstateTest do
       }
       |> StateMachine.new()
 
-    assert true == StateMachine.modifiable?(state, :created)
+    # before transition
+    assert true == StateMachine.modifiable?(state, StateMachine.get_states(state))
+
+    # transition happens here
+    StateMachine.transition(state, "created.confirmed_by_customer")
 
     # not modifiable state
-    assert false == StateMachine.modifiable?(state, :customer_confirmed)
+    assert false == StateMachine.modifiable?(state, StateMachine.get_states(state))
   end
 
   test "Check before or callback function invoked" do
@@ -162,7 +166,6 @@ defmodule ExstateTest do
              StateMachine.transition(state, "customer_confirmed.invoice_created")
   end
 
-  # TODO: fix get _States
   test "Check resolved state" do
     state =
       %StateMachine.Machine{
@@ -184,14 +187,12 @@ defmodule ExstateTest do
       |> StateMachine.new()
 
     # state before transition
-    # assert "created" == StateMachine.get_states(state)
-    # IO.puts(StateMachine.get_states(state))
+    assert "created" == StateMachine.get_states(state)
 
     # Invoke transition
-    # IO.inspect(StateMachine.transition(state, "created"))
+    StateMachine.transition(state, "created")
 
     # state after transition
-    # IO.puts(StateMachine.get_states(state))
-    # assert "created" == StateMachine.get_states(state)
+    assert "customer_confirmed" == StateMachine.get_states(state)
   end
 end
