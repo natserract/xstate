@@ -5,8 +5,18 @@ defmodule Exstate.StateMachine do
     - `Context`
     - `Transitions`
   
-  ## Layout
-  blabla
+  # Concepts
+  A finite state machine is a mathematical model of computation that describes the behavior of a system that can be in only one state at any given time. For example, let's say you can be represented by a state machine with a finite number (2) of states: asleep or awake. At any given time, you're either asleep or awake. It is impossible for you to be both asleep and awake at the same time, and it is impossible for you to be neither asleep nor awake.
+  
+  Formally, finite state machines have five parts:
+  - A finite number of states
+  - A finite number of events
+  - An initial state
+  - A transition function that determines the next state given the current state and event
+  - A (possibly empty) set of final states
+  
+  State refers to some finite, qualitative "mode" or "status" of a system being modeled by a state machine, and does not describe all the (possibly infinite) data related to that system. For example, water can be in 1 of 4 states: ice, liquid, gas, or plasma. However, the temperature of water can vary and its measurement is quantitative and infinite.
+  
   """
 
   @enforce_keys [:states, :pid]
