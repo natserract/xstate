@@ -18,6 +18,11 @@ defmodule Exstate do
   - By virtue of a transition “happening”, states are exited, and entered and the relevant actions are performed
   - The machine immediately is in the new state, ready to process the next event.
 
+  More resources:
+  - [Finite-state machine](https://en.wikipedia.org/wiki/Finite-state_machine) article on Wikipedia
+  - [Understanding State Machines](https://www.freecodecamp.org/news/state-machines-basics-of-computer-science-d42855debc66/) by Mark Shead
+  - [A-Level Comp Sci: Finite State Machine](https://www.youtube.com/watch?v=4rNYAvsSkwk)
+
   Top-level `use`:
       use Exstate.StateMachine
   """

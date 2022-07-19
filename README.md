@@ -24,7 +24,7 @@ func = fn msg, inside ->
   {:ok, msg}
 end
 
-state =
+machine =
   %StateMachine.Machine{
     initial_state: "created",
     mapping: %{
@@ -48,16 +48,11 @@ state =
   |> StateMachine.new()
 
 # state before transition
-assert "created" == StateMachine.get_states(state)
+assert "created" == StateMachine.get_states(machine)
 
 # Invoke transition
-StateMachine.transition(state, "created")
+StateMachine.transition(machine, "created")
 
 # state after transition
-assert "customer_confirmed" == StateMachine.get_states(state)
+assert "customer_confirmed" == StateMachine.get_states(machine)
 ```
-
-More resources:
-- [Finite-state machine](https://en.wikipedia.org/wiki/Finite-state_machine) article on Wikipedia
-- [Understanding State Machines](https://www.freecodecamp.org/news/state-machines-basics-of-computer-science-d42855debc66/) by Mark Shead
-- [A-Level Comp Sci: Finite State Machine](https://www.youtube.com/watch?v=4rNYAvsSkwk)

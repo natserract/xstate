@@ -68,15 +68,21 @@ defmodule Exstate.StateMachine do
           external: term()
         }
 
+  @typedoc """
+    Parameters:
+  
+    - `pid` : PID (process identifier)
+    - `event`: The event that caused the transition
+    - `access_time`: Access time
+    - `state`: The resolved machine state, after transition
+    - `instance`: Any external value you want to pass it, passed from: `external`
+  """
   defstruct(Context,
     pid: pid(),
     event: term(),
-    # ^ The event that caused the transition
     access_time: term(),
     state: term(),
-    # ^ The resolved machine state, after transition
     instance: term()
-    # ^ Any external value you want to pass it
   )
 
   defstruct(Transitions,
